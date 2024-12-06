@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Super simple EventSource</title>
+  <meta charset="UTF-8">
+  <meta name="description" content="EventSource API test">
+  <meta name="keywords" content="JavaScript, EventSource">
+  <meta name="author" content="Marcus Michaels">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      text-wrap: balance;
+    }
+
+    small {
+      display: block;
+      margin-top: 1rem;
+    }
+  </style>
+
+</head>
+
+<body>
+  <h1>Messages</h1>
+  <p>Use the broadcast form below to add a message. If you refresh the page you'll see jus the latest message</p>
+  <ul id="messages"></ul>
+
+  <form id="broadcast-form">
+    <label for="broadcast-input">Enter text:</label>
+    <input type="text" id="broadcast-input" name="broadcast-input" required>
+    <button type="submit">Broadcast</button>
+  </form>
+
+  <small>P.S. For this to work you'll need to locally run server.js</small>
+
+  <script>
+    const serverUrl = "http://localhost:3210";
+
+    const eventSource = new EventSource(`${serverUrl}/events`);
+    const messageList = document.getElementById('messages');
+    eventSource.onmessage = (event) => {
+      console.log("event:", event);
+      const data = JSON.parse(event.data);
+      console.log(data);
+      const newMessage = document.createElement('li');
+      newMessage.textContent = data.text;
+      messageList.appendChild(newMessage);
+    };
+
+    eventSource.onerror = function () {
+      console.error('EventSource failed. Reconnecting...');
+    };
+
+    eventSource.onopen = () => {
+      console.log('Connection established.');
+    };
+
+    const handleBroadcast = async () => {
+      const broadcastInput = document.getElementById('broadcast-input');
+
+      try {
+        const response = await fetch(`${serverUrl}/send`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          mode: "no-cors",
+          body: JSON.stringify({ text: broadcastInput.value }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Oh nooo");
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        broadcastInput.value = "";
+      }
+    };
+
+    document.getElementById('broadcast-form').addEventListener('submit', (evt) => {
+      evt.preventDefault();
+      handleBroadcast();
+    });
+
+  </script>
+</body>
+
+</html>
